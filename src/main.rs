@@ -95,5 +95,14 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, pos: &Position<usize>)
     ]);
     let [text_area, area] = vertical.areas(frame.area());
     frame.render_widget(header.centered(), text_area);
+
+    let keyb_row_constraints: Vec<Constraint> = keyboard.layers[0].rows.iter().map(|r| Constraint::Fill(1)).collect();
+    let keyb_vert = Layout::vertical(keyb_row_constraints);
+
+    for r in 0..keyboard.layers[0].rows.len() {
+        
+
+    }
+
 }
 
