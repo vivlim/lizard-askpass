@@ -45,10 +45,7 @@ pub fn buildKeyboard() -> CharMatrix<Key> {
                         Key::Char { c: 'j' },
                         Key::Char { c: 'k' },
                         Key::Char { c: 'l' },
-                        Key::Layer {
-                            display: "shift",
-                            target_layer: 1,
-                        },
+                        Key::Char { c: ';' },
                     ],
                 },
                 Row::<Key> {
@@ -62,6 +59,23 @@ pub fn buildKeyboard() -> CharMatrix<Key> {
                         Key::Char { c: 'm' },
                         Key::Char { c: ',' },
                         Key::Char { c: '.' },
+                        Key::Char { c: '/' },
+                    ],
+                },
+                Row::<Key> {
+                    items: vec![
+                        Key::Layer {
+                            display: "shift",
+                            target_layer: 1,
+                        },
+                        Key::Char { c: ' ' },
+                        Key::Char { c: '[' },
+                        Key::Char { c: ']' },
+                        Key::Char { c: '\'' },
+                        Key::Char { c: '\\' },
+                        Key::Char { c: '-' },
+                        Key::Char { c: '+' },
+                        Key::Char { c: ' ' },
                         Key::Confirm { display: "OK" },
                     ],
                 },

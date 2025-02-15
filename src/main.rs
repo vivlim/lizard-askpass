@@ -102,10 +102,10 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveStat
     let vertical = Layout::vertical([
         Constraint::Length(4),
         Constraint::Fill(1),
-        Constraint::Length(footer.height() as u16),
+        //Constraint::Length(footer.height() as u16),
     ]);
-    let [text_area, area, label_area] = vertical.areas(frame.area());
-    frame.render_widget(footer.centered(), label_area);
+    let [text_area, area, /*label_area*/] = vertical.areas(frame.area());
+    //frame.render_widget(footer.centered(), label_area);
     frame.render_widget(
         Paragraph::new(state.text.clone())
             .block(
