@@ -1,13 +1,18 @@
 use color_eyre::Result;
+use keyboard::{buildKeyboard, key_display, Key};
+use matrix::{CharMatrix, Position};
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEventKind},
     layout::{Alignment, Constraint, Layout},
     style::{Color, Style, Styled, Stylize},
     text::{Line, Text},
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     DefaultTerminal, Frame,
 };
 use std::fmt::Debug;
+
+pub mod keyboard;
+pub mod matrix;
 
 fn main() -> Result<()> {
     color_eyre::install()?;
@@ -18,67 +23,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
-struct CharMatrix<T>
-where
-    T: Debug + Default,
-{
-    layers: Vec<Layer<T>>,
-}
-
-#[derive(Debug, Default)]
-struct Layer<T>
-where
-    T: Debug + Default,
-{
-    rows: Vec<Row<T>>,
-}
-
-#[derive(Debug, Default)]
-struct Row<T>
-where
-    T: Debug + Default,
-{
-    items: Vec<T>,
-}
-
-#[derive(Debug, Default)]
-struct Dimension<T> {
-    w: T,
-    h: T,
-}
-
-#[derive(Debug, Default)]
-struct Position<T> {
-    x: T,
-    y: T,
-}
-
 struct InteractiveState {
     position: Position<usize>,
     layer: usize,
     text: String,
-}
-
-fn buildKeyboard() -> CharMatrix<char> {
-    CharMatrix::<char> {
-        layers: vec![Layer::<char> {
-            rows: vec![
-                Row::<char> {
-                    items: vec!['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-                },
-                Row::<char> {
-                    items: vec!['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-                },
-                Row::<char> {
-                    items: vec!['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-                },
-                Row::<char> {
-                    items: vec!['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
-                },
-            ],
-        }],
-    }
 }
 
 fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
@@ -95,12 +43,21 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
             if key.kind == KeyEventKind::Press {
                 match key.code {
                     KeyCode::Enter => {
-                        let selected = keyboard.layers[state.layer].rows[state.position.y].items
-                            [state.position.x];
-                        state.text = format!("{}{}", &state.text, selected);
+                        match keyboard.layers[state.layer].rows[state.position.y].items
+                            [state.position.x]
+                        {
+                            keyboard::Key::Char { c } => {
+                                state.text = format!("{}{}", &state.text, c);
+                            }
+                            keyboard::Key::Layer {
+                                display,
+                                target_layer,
+                            } => {}
+                            keyboard::Key::Confirm { display } => {}
+                        };
                     }
                     KeyCode::Char('q') => break Ok(()),
-                    KeyCode::Esc => {
+                    KeyCode::Esc | KeyCode::Backspace => {
                         let len = state.text.len();
                         if len > 0 {
                             state.text.truncate(len - 1);
@@ -134,7 +91,7 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
     }
 }
 
-fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, state: &InteractiveState) {
+fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveState) {
     let pos = &state.position;
 
     let footer = Text::from_iter([
@@ -150,12 +107,14 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, state: &InteractiveSta
     let [text_area, area, label_area] = vertical.areas(frame.area());
     frame.render_widget(footer.centered(), label_area);
     frame.render_widget(
-        Paragraph::new(state.text.clone()).block(
-            Block::new()
-                .border_style(Style::default().fg(Color::Gray))
-                .border_type(BorderType::Rounded)
-                .borders(Borders::ALL),
-        ),
+        Paragraph::new(state.text.clone())
+            .block(
+                Block::new()
+                    .border_style(Style::default().fg(Color::Gray))
+                    .border_type(BorderType::Rounded)
+                    .borders(Borders::ALL),
+            )
+            .wrap(Wrap { trim: false }),
         text_area,
     );
 
@@ -172,14 +131,17 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, state: &InteractiveSta
             row.items.iter().map(|r| Constraint::Fill(1)).collect();
         let keyb_cols = Layout::horizontal(keyb_col_constraints).split(keyb_vert[r]);
         for c in 0..row.items.len() {
-            let (color, border) = if c == pos.x && r == pos.y {
-                (Color::LightGreen, BorderType::QuadrantOutside)
+            let (selected, border) = if c == pos.x && r == pos.y {
+                (true, BorderType::QuadrantOutside)
             } else {
-                (Color::Green, BorderType::Rounded)
+                (false, BorderType::Rounded)
             };
 
+            let key = &row.items[c];
+            let color = key_to_color(key, selected);
+
             frame.render_widget(
-                Paragraph::new(format!("{}", row.items[c]))
+                Paragraph::new(key_display(key))
                     .style(Style::default().fg(color))
                     .alignment(Alignment::Center)
                     .block(
@@ -192,5 +154,16 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, state: &InteractiveSta
                 keyb_cols[c],
             );
         }
+    }
+}
+
+fn key_to_color(key: &Key, selected: bool) -> Color {
+    match (key, selected) {
+        (Key::Char { .. }, true) => Color::White,
+        (Key::Char { .. }, false) => Color::Gray,
+        (Key::Layer { .. }, true) => Color::LightMagenta,
+        (Key::Layer { .. }, false) => Color::Magenta,
+        (Key::Confirm { .. }, true) => Color::LightGreen,
+        (Key::Confirm { .. }, false) => Color::Green,
     }
 }
