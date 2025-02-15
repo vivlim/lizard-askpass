@@ -56,6 +56,7 @@ struct Position<T> {
 
 struct InteractiveState {
     position: Position<usize>,
+    layer: usize,
     text: String,
 }
 
@@ -84,6 +85,7 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
     let keyboard = buildKeyboard();
     let mut state = InteractiveState {
         position: Position::<usize> { x: 0, y: 0 },
+        layer: 0,
         text: String::new(),
     };
     loop {
@@ -92,9 +94,18 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
                 match key.code {
-                    KeyCode::Enter => break Ok(()),
+                    KeyCode::Enter => {
+                        let selected = keyboard.layers[state.layer].rows[state.position.y].items
+                            [state.position.x];
+                        state.text = format!("{}{}", &state.text, selected);
+                    }
                     KeyCode::Char('q') => break Ok(()),
-                    KeyCode::Esc => break Ok(()),
+                    KeyCode::Esc => {
+                        let len = state.text.len();
+                        if len > 0 {
+                            state.text.truncate(len - 1);
+                        }
+                    }
                     KeyCode::Char('h') | KeyCode::Left => {
                         delta = Some(Position::<i8> { x: -1, y: 0 })
                     }
@@ -125,7 +136,6 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
 
 fn render(frame: &mut Frame, keyboard: &CharMatrix<char>, state: &InteractiveState) {
     let pos = &state.position;
-    let header = Text::from_iter([Line::from("hi".bold())]);
 
     let footer = Text::from_iter([
         Line::from("<q> Quit | <arrows / hjkl> Move"),
