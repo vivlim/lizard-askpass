@@ -75,8 +75,8 @@ pub fn buildKeyboard() -> CharMatrix<Key> {
                             Key::Char { c: '\'' },
                             Key::Char { c: '\\' },
                             Key::Char { c: '-' },
+                            Key::Char { c: '_' },
                             Key::Char { c: '=' },
-                            Key::Readline { display: "line" },
                             Key::Confirm { display: "OK" },
                         ],
                     },
@@ -151,9 +151,9 @@ pub fn buildKeyboard() -> CharMatrix<Key> {
                             Key::Char { c: '}' },
                             Key::Char { c: '"' },
                             Key::Char { c: '|' },
-                            Key::Char { c: '_' },
                             Key::Char { c: '+' },
-                            Key::Readline { display: "line" },
+                            Key::ToggleVisible { display: "show" },
+                            Key::Readline { display: "edit" },
                             Key::Confirm { display: "OK" },
                         ],
                     },
@@ -175,6 +175,9 @@ pub enum Key {
     Confirm {
         display: &'static str,
     },
+    ToggleVisible {
+        display: &'static str,
+    },
     Readline {
         display: &'static str,
     },
@@ -189,5 +192,6 @@ pub fn key_display(k: &Key) -> String {
         } => display.to_string(),
         Key::Confirm { display } => display.to_string(),
         Key::Readline { display } => display.to_string(),
+        Key::ToggleVisible { display } => display.to_string(),
     }
 }

@@ -2,14 +2,18 @@ use color_eyre::Result;
 use keyboard::{buildKeyboard, key_display, Key};
 use matrix::{CharMatrix, Position};
 use ratatui::{
-    crossterm::event::{self, Event, KeyCode, KeyEventKind},
+    crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     layout::{Alignment, Constraint, Layout},
     style::{Color, Style, Styled, Stylize},
     text::{Line, Text},
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     DefaultTerminal, Frame,
 };
-use std::fmt::Debug;
+use std::{
+    fmt::Debug,
+    io::{stdout, Write},
+};
+use tui_textarea::TextArea;
 
 pub mod keyboard;
 pub mod matrix;
@@ -19,7 +23,21 @@ fn main() -> Result<()> {
     let terminal = ratatui::init();
     let result = run(terminal);
     ratatui::restore();
-    result?;
+    let text = match result? {
+        RunResult::Text { text } => text,
+        RunResult::MoveToReadline { starting_text } => {
+            let terminal = ratatui::init();
+            let result = readline(terminal, starting_text);
+            ratatui::restore();
+            result?
+        }
+        RunResult::Abort => {
+            return Ok(());
+        }
+    };
+
+    println!("{}", &text);
+
     Ok(())
 }
 
@@ -27,14 +45,16 @@ struct InteractiveState {
     position: Position<usize>,
     layer: usize,
     text: String,
+    visible: bool,
 }
 
-fn run(mut terminal: DefaultTerminal) -> Result<String, std::io::Error> {
+fn run(mut terminal: DefaultTerminal) -> Result<RunResult, std::io::Error> {
     let keyboard = buildKeyboard();
     let mut state = InteractiveState {
         position: Position::<usize> { x: 0, y: 0 },
         layer: 0,
         text: String::new(),
+        visible: false,
     };
     loop {
         terminal.draw(|frame| render(frame, &keyboard, &state))?;
@@ -55,8 +75,23 @@ fn run(mut terminal: DefaultTerminal) -> Result<String, std::io::Error> {
                             } => {
                                 state.layer = target_layer;
                             }
-                            keyboard::Key::Confirm { display } => break Ok(state.text.clone()),
-                            keyboard::Key::Readline { display } => {}
+                            keyboard::Key::Confirm { display } => {
+                                break Ok(RunResult::Text {
+                                    text: state.text.clone(),
+                                })
+                            }
+                            keyboard::Key::Readline { display } => {
+                                break Ok(RunResult::MoveToReadline {
+                                    starting_text: if state.visible {
+                                        state.text.clone()
+                                    } else {
+                                        String::new()
+                                    },
+                                })
+                            }
+                            Key::ToggleVisible { display } => {
+                                state.visible = !state.visible;
+                            }
                         };
                     }
                     KeyCode::Tab => {
@@ -67,7 +102,7 @@ fn run(mut terminal: DefaultTerminal) -> Result<String, std::io::Error> {
                             _ => 0,
                         };
                     }
-                    KeyCode::Char('q') => break Ok(()),
+                    KeyCode::Char('q') => break Ok(RunResult::Abort),
                     KeyCode::Esc | KeyCode::Backspace => {
                         let len = state.text.len();
                         if len > 0 {
@@ -117,8 +152,13 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveStat
     ]);
     let [text_area, area, /*label_area*/] = vertical.areas(frame.area());
     //frame.render_widget(footer.centered(), label_area);
+    let display_text = match state.visible {
+        true => state.text.clone(),
+        false => "*".repeat(state.text.len()),
+    };
+
     frame.render_widget(
-        Paragraph::new(state.text.clone())
+        Paragraph::new(display_text)
             .block(
                 Block::new()
                     .border_style(Style::default().fg(Color::Gray))
@@ -167,6 +207,40 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveStat
     }
 }
 
+fn readline(mut term: DefaultTerminal, starting_text: String) -> Result<String> {
+    let mut textarea = TextArea::default();
+    textarea.insert_str(starting_text);
+    textarea.set_cursor_line_style(Style::default());
+    textarea.set_style(Style::default().fg(Color::White));
+    textarea.set_block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(Color::Gray)
+            .border_type(BorderType::Rounded)
+            .title("Text entry (press Enter to confirm)"),
+    );
+    let layout = Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)]);
+    loop {
+        term.draw(|f| {
+            let chunks = layout.split(f.area());
+            f.render_widget(&textarea, chunks[0]);
+        })?;
+
+        if let Event::Key(key) = event::read()? {
+            match key {
+                KeyEvent {
+                    kind: KeyEventKind::Press,
+                    code: KeyCode::Enter,
+                    ..
+                } => break Ok(String::new()),
+                k => {
+                    textarea.input(k);
+                }
+            };
+        }
+    }
+}
+
 fn key_to_color(key: &Key, selected: bool) -> Color {
     match (key, selected) {
         (Key::Char { .. }, true) => Color::White,
@@ -175,5 +249,13 @@ fn key_to_color(key: &Key, selected: bool) -> Color {
         (Key::Layer { .. }, false) => Color::Magenta,
         (Key::Confirm { .. }, true) => Color::LightGreen,
         (Key::Confirm { .. }, false) => Color::Green,
+        (_, true) => Color::LightRed,
+        (_, false) => Color::Red,
     }
+}
+
+enum RunResult {
+    Text { text: String },
+    MoveToReadline { starting_text: String },
+    Abort,
 }
