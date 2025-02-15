@@ -1,3 +1,14 @@
+# lizard-askpass
+
+a on-screen keyboard tui meant to be used with the steam deck's "lizard mode" for entering text using only arrow keys, enter, and escape, particularly for entering a disk encryption password at boot.
+
+## current status
+I haven't tried it in an initrd yet but the basics work:
+
+[![asciicast](https://asciinema.org/a/nT4TkExZMP1YNpQYEvAALkLMi.svg)](https://asciinema.org/a/nT4TkExZMP1YNpQYEvAALkLMi)
+
+below is the contents of the readme that came with this template.
+---
 A template Rust project with fully functional and no-frills Nix support, as well as builtin VSCode configuration to get IDE experience without any manual setup (just [install direnv](https://nixos.asia/en/direnv), open in VSCode and accept the suggestions). It uses [crane](https://crane.dev/), via [rust-flake](https://github.com/juspay/rust-flake).
 
 > [!NOTE]
