@@ -29,7 +29,7 @@ struct InteractiveState {
     text: String,
 }
 
-fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
+fn run(mut terminal: DefaultTerminal) -> Result<String, std::io::Error> {
     let keyboard = buildKeyboard();
     let mut state = InteractiveState {
         position: Position::<usize> { x: 0, y: 0 },
@@ -52,8 +52,19 @@ fn run(mut terminal: DefaultTerminal) -> Result<(), std::io::Error> {
                             keyboard::Key::Layer {
                                 display,
                                 target_layer,
-                            } => {}
-                            keyboard::Key::Confirm { display } => {}
+                            } => {
+                                state.layer = target_layer;
+                            }
+                            keyboard::Key::Confirm { display } => break Ok(state.text.clone()),
+                            keyboard::Key::Readline { display } => {}
+                        };
+                    }
+                    KeyCode::Tab => {
+                        let current_layer = state.layer;
+                        state.layer = match current_layer {
+                            0 => 1,
+                            1 => 0,
+                            _ => 0,
                         };
                     }
                     KeyCode::Char('q') => break Ok(()),
@@ -118,15 +129,14 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveStat
         text_area,
     );
 
-    let keyb_row_constraints: Vec<Constraint> = keyboard.layers[0]
-        .rows
-        .iter()
-        .map(|r| Constraint::Fill(1))
-        .collect();
+    let layer = &keyboard.layers[state.layer];
+
+    let keyb_row_constraints: Vec<Constraint> =
+        layer.rows.iter().map(|r| Constraint::Fill(1)).collect();
     let keyb_vert = Layout::vertical(keyb_row_constraints).split(area);
 
-    for r in 0..keyboard.layers[0].rows.len() {
-        let row = &keyboard.layers[0].rows[r];
+    for r in 0..layer.rows.len() {
+        let row = &layer.rows[r];
         let keyb_col_constraints: Vec<Constraint> =
             row.items.iter().map(|r| Constraint::Fill(1)).collect();
         let keyb_cols = Layout::horizontal(keyb_col_constraints).split(keyb_vert[r]);
