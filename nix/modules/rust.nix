@@ -21,6 +21,6 @@
         ]
       );
     };
-    packages.default = self'.packages.lizard-askpass;
+    packages.default = self'.packages.lizard_askpass;
   };
 }

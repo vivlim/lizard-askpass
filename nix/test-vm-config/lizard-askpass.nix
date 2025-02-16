@@ -15,6 +15,7 @@ let
     serviceConfig = {
       ExecStart = "${selfPackages.lizard_password_agent}/bin/lizard_password_agent";
       SystemCallArchitectures = "native";
+      Restart = "on-failure";
       #StandardInput="tty-force";
       #StandardOutput="inherit";
       #StandardError="inherit";

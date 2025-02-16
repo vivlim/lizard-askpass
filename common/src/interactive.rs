@@ -64,8 +64,7 @@ fn run_osk<B: Backend, I: Read + TermRead>(
     let mut result: Option<RunResult> = None;
     terminal.draw(|frame| render(frame, &keyboard, &state))?;
     for k in input.keys() {
-        eprintln!("drawing frame");
-        terminal.draw(|frame| render(frame, &keyboard, &state))?;
+        //eprintln!("drawing frame");
         let mut delta: Option<Position<i8>> = None; //Position::<i8> {x: 0, y: 0};
         match k? {
             Key::Char('\n') => {
@@ -133,6 +132,8 @@ fn run_osk<B: Backend, I: Read + TermRead>(
             state.position.x =
                 (col_count as i8 + state.position.x as i8 + delta.x) as usize % col_count;
         }
+
+        terminal.draw(|frame| render(frame, &keyboard, &state))?;
     }
     Ok(result.expect("result wasn't set"))
 }
