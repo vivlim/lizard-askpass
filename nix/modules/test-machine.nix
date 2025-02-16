@@ -11,6 +11,7 @@
           modules = [
             ../test-vm-config/default.nix
             ../test-vm-config/disk.nix
+            ../test-vm-config/lizard-askpass.nix
             {
               users.users."${username}" = {
                 isNormalUser = true;
@@ -23,6 +24,7 @@
             }
             inputs.disko.nixosModules.disko
           ];
+          specialArgs = { outputs = self'."${system}".packages; };
         };
 
       run-test-vm-script = pkgs.writeShellScriptBin "run-test-vm" ''
