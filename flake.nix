@@ -11,6 +11,9 @@
 
     git-hooks.url = "github:cachix/git-hooks.nix";
     git-hooks.flake = false;
+
+    disko.url = "github:nix-community/disko/latest";
+    disko.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs:

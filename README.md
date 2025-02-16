@@ -7,6 +7,15 @@ I haven't tried it in an initrd yet but the basics work:
 
 [![asciicast](https://asciinema.org/a/nT4TkExZMP1YNpQYEvAALkLMi.svg)](https://asciinema.org/a/nT4TkExZMP1YNpQYEvAALkLMi)
 
+
+## run a nixos vm with lizard-askpass used to prompt for a password in initrd
+
+(under construction. it currently *doesn't* run lizard-askpass)
+
+```
+nix run .#vm
+```
+
 below is the contents of the readme that came with this template.
 ---
 A template Rust project with fully functional and no-frills Nix support, as well as builtin VSCode configuration to get IDE experience without any manual setup (just [install direnv](https://nixos.asia/en/direnv), open in VSCode and accept the suggestions). It uses [crane](https://crane.dev/), via [rust-flake](https://github.com/juspay/rust-flake).
