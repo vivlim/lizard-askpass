@@ -1,7 +1,62 @@
 # This is based heavily on nixpkgs' nixos/modules/system/boot/unl0kr.nix at commit 66e4c21
-{ pkgs, config, lib, lizard-askpass, ... }:
+{ pkgs, config, lib, selfPackages, ... }:
 let
   cfg = config.boot.initrd.lizard-askpass;
+
+  agentServiceUnit = {
+    enable = true;
+    unitConfig = {
+      Description = "Lizard (agent)";
+      DefaultDependencies = "no";
+      After = "systemd-vconsole-setup.service";
+      #Conflicts="emergency.service shutdown.target initrd-switch-root.target";
+      Conflicts = "systemd-ask-password-console.path systemd-ask-password-console.service";
+
+    };
+    serviceConfig = {
+      ExecStart = "${selfPackages.lizard_password_agent}/bin/lizard_password_agent";
+      SystemCallArchitectures = "native";
+      #StandardInput="tty-force";
+      #StandardOutput="inherit";
+      #StandardError="inherit";
+
+    };
+    wantedBy = [
+      #"cryptsetup-pre.target"
+      "systemd-vconsole-setup.service"
+      #"multi-user.target"
+    ];
+    before = [
+      "cryptsetup.target"
+    ];
+  };
+  agentPathUnit = {
+    enable = true;
+    unitConfig = {
+      Description = "Lizard (path unit)";
+      #Before="systemd-ask-password-console.path";
+      After = "plymouth-start.service";
+      #Conflicts="getty@tty1.service emergency.service shutdown.target initrd-switch-root.target";
+      #Conflicts="systemd-ask-password-console.path";
+    };
+    pathConfig = {
+      DirectoryNotEmpty = "/run/systemd/ask-password";
+      MakeDirectory = "yes";
+    };
+    wantedBy = [
+      "cryptsetup-pre.target"
+      #"multi-user.target"
+    ];
+    before = [
+      "cryptsetup-pre.target"
+    ];
+    #    before=[
+    #      "emergency.service"
+    #      "paths.target"
+    #      "cryptsetup.target"
+    #      "shutdown.target"
+    #    ];
+  };
 in
 {
   options.boot.initrd.lizard-askpass = {
@@ -40,19 +95,32 @@ in
       ];
 
     boot.initrd.systemd = {
+      emergencyAccess = true;
       storePaths = with pkgs; [
         libinput
         xkeyboard_config
-        "${lizard-askpass}/bin/lizard-askpass"
+        selfPackages.lizard_password_agent
+        "${selfPackages.lizard_password_agent}/bin/lizard_password_agent"
       ];
 
-      packages = [
-        lizard-askpass
+      initrdBin = [
+        selfPackages.lizard_password_agent
       ];
-      users.root.shell = "${lizard-askpass}/bin/lizard-askpass";
 
-      paths.lizard-askpass.wantedBy = [ "local-fs-pre.target" ];
+      paths.lizard_password_agent = agentPathUnit;
+      services.lizard_password_agent = agentServiceUnit;
+      #paths.systemd-ask-password-console.enable = false;
+      #paths.systemd-ask-password-wall.enable = false;
     };
+
+    systemd.paths.lizard_password_agent = agentPathUnit;
+    systemd.services.lizard_password_agent = agentServiceUnit;
+    #systemd.paths.systemd-ask-password-console.enable = false;
+    #systemd.paths.systemd-ask-password-wall.enable = false;
+    environment.systemPackages = [
+      selfPackages.lizard_askpass
+      selfPackages.lizard_password_agent
+    ];
   };
 }
 

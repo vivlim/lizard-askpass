@@ -17,14 +17,18 @@
                 isNormalUser = true;
                 extraGroups = [ "wheel" ];
                 initialPassword = password;
+                openssh.authorizedKeys.keys = [
+                  "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILd44HChzsbUgnTA+AX86jnzneCq7eKCZgVXqgK7JGSE vivlim@vivdeck"
+                ];
               };
               users.groups.viv = {
                 members = [ username ];
               };
+              services.getty.autologinUser = username;
             }
             inputs.disko.nixosModules.disko
           ];
-          specialArgs = { lizard-askpass = self'.packages.lizard-askpass; };
+          specialArgs = { selfPackages = self'.packages; };
         };
 
       run-test-vm-script = pkgs.writeShellScriptBin "run-test-vm" ''

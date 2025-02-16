@@ -1,6 +1,10 @@
+use crate::keyboard::{self, buildKeyboard, key_display, LizardKey};
+use crate::matrix::{CharMatrix, Position};
 use color_eyre::Result;
-use keyboard::{buildKeyboard, key_display, Key};
-use matrix::{CharMatrix, Position};
+use ratatui::prelude::Backend;
+use ratatui::termion::event::Key;
+use ratatui::termion::input::TermRead;
+use ratatui::Terminal;
 use ratatui::{
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},
     layout::{Alignment, Constraint, Layout},
@@ -9,19 +13,20 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph, Wrap},
     DefaultTerminal, Frame,
 };
+use std::io::Read;
 use std::{
     fmt::Debug,
     io::{stdout, Write},
 };
 use tui_textarea::TextArea;
 
-pub mod keyboard;
-pub mod matrix;
-
-fn main() -> Result<()> {
+pub fn run<B: Backend, I: Read + TermRead>(terminal: Terminal<B>, input: I) -> Result<String> {
+    eprintln!("entered interactive::run()");
     color_eyre::install()?;
-    let terminal = ratatui::init();
-    let result = run(terminal);
+    eprintln!("color_eyre installed");
+    //let terminal = ratatui::init();
+    let result = run_osk(terminal, input);
+    eprintln!("run_osk finished");
     ratatui::restore();
     let text = match result? {
         RunResult::Text { text } => text,
@@ -32,13 +37,10 @@ fn main() -> Result<()> {
             result?
         }
         RunResult::Abort => {
-            return Ok(());
+            return Ok(String::new());
         }
     };
-
-    println!("{}", &text);
-
-    Ok(())
+    Ok(text)
 }
 
 struct InteractiveState {
@@ -48,7 +50,10 @@ struct InteractiveState {
     visible: bool,
 }
 
-fn run(mut terminal: DefaultTerminal) -> Result<RunResult, std::io::Error> {
+fn run_osk<B: Backend, I: Read + TermRead>(
+    mut terminal: Terminal<B>,
+    mut input: I,
+) -> Result<RunResult> {
     let keyboard = buildKeyboard();
     let mut state = InteractiveState {
         position: Position::<usize> { x: 0, y: 0 },
@@ -56,74 +61,68 @@ fn run(mut terminal: DefaultTerminal) -> Result<RunResult, std::io::Error> {
         text: String::new(),
         visible: false,
     };
-    loop {
+    let mut result: Option<RunResult> = None;
+    terminal.draw(|frame| render(frame, &keyboard, &state))?;
+    for k in input.keys() {
+        eprintln!("drawing frame");
         terminal.draw(|frame| render(frame, &keyboard, &state))?;
         let mut delta: Option<Position<i8>> = None; //Position::<i8> {x: 0, y: 0};
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Enter => {
-                        match keyboard.layers[state.layer].rows[state.position.y].items
-                            [state.position.x]
-                        {
-                            keyboard::Key::Char { c } => {
-                                state.text = format!("{}{}", &state.text, c);
-                            }
-                            keyboard::Key::Layer {
-                                display,
-                                target_layer,
-                            } => {
-                                state.layer = target_layer;
-                            }
-                            keyboard::Key::Confirm { display } => {
-                                break Ok(RunResult::Text {
-                                    text: state.text.clone(),
-                                })
-                            }
-                            keyboard::Key::Readline { display } => {
-                                break Ok(RunResult::MoveToReadline {
-                                    starting_text: if state.visible {
-                                        state.text.clone()
-                                    } else {
-                                        String::new()
-                                    },
-                                })
-                            }
-                            Key::ToggleVisible { display } => {
-                                state.visible = !state.visible;
-                            }
-                        };
+        match k.as_ref()? {
+            Key::Char('\n') => {
+                match keyboard.layers[state.layer].rows[state.position.y].items[state.position.x] {
+                    keyboard::LizardKey::Char { c } => {
+                        state.text = format!("{}{}", &state.text, c);
                     }
-                    KeyCode::Tab => {
-                        let current_layer = state.layer;
-                        state.layer = match current_layer {
-                            0 => 1,
-                            1 => 0,
-                            _ => 0,
-                        };
+                    keyboard::LizardKey::Layer {
+                        display,
+                        target_layer,
+                    } => {
+                        state.layer = target_layer;
                     }
-                    KeyCode::Char('q') => break Ok(RunResult::Abort),
-                    KeyCode::Esc | KeyCode::Backspace => {
-                        let len = state.text.len();
-                        if len > 0 {
-                            state.text.truncate(len - 1);
-                        }
+                    keyboard::LizardKey::Confirm { display } => {
+                        result = Some(RunResult::Text {
+                            text: state.text.clone(),
+                        });
+                        break;
                     }
-                    KeyCode::Char('h') | KeyCode::Left => {
-                        delta = Some(Position::<i8> { x: -1, y: 0 })
+                    keyboard::LizardKey::Readline { display } => {
+                        result = Some(RunResult::MoveToReadline {
+                            starting_text: if state.visible {
+                                state.text.clone()
+                            } else {
+                                String::new()
+                            },
+                        });
+                        break;
                     }
-                    KeyCode::Char('j') | KeyCode::Down => {
-                        delta = Some(Position::<i8> { x: 0, y: 1 })
+                    LizardKey::ToggleVisible { display } => {
+                        state.visible = !state.visible;
                     }
-                    KeyCode::Char('k') | KeyCode::Up => {
-                        delta = Some(Position::<i8> { x: 0, y: -1 })
-                    }
-                    KeyCode::Char('l') | KeyCode::Right => {
-                        delta = Some(Position::<i8> { x: 1, y: 0 })
-                    }
-                    _ => {}
+                };
+            }
+            Key::Char('\t') => {
+                let current_layer = state.layer;
+                state.layer = match current_layer {
+                    0 => 1,
+                    1 => 0,
+                    _ => 0,
+                };
+            }
+            Key::Char('q') => {
+                result = Some(RunResult::Abort);
+                break;
+            }
+            Key::Esc | Key::Backspace => {
+                let len = state.text.len();
+                if len > 0 {
+                    state.text.truncate(len - 1);
                 }
             }
+            Key::Char('h') | Key::Left => delta = Some(Position::<i8> { x: -1, y: 0 }),
+            Key::Char('j') | Key::Down => delta = Some(Position::<i8> { x: 0, y: 1 }),
+            Key::Char('k') | Key::Up => delta = Some(Position::<i8> { x: 0, y: -1 }),
+            Key::Char('l') | Key::Right => delta = Some(Position::<i8> { x: 1, y: 0 }),
+            _ => {}
         }
 
         if let Some(delta) = delta {
@@ -135,9 +134,10 @@ fn run(mut terminal: DefaultTerminal) -> Result<RunResult, std::io::Error> {
                 (col_count as i8 + state.position.x as i8 + delta.x) as usize % col_count;
         }
     }
+    Ok(result.expect("result wasn't set"))
 }
 
-fn render(frame: &mut Frame, keyboard: &CharMatrix<Key>, state: &InteractiveState) {
+fn render(frame: &mut Frame, keyboard: &CharMatrix<LizardKey>, state: &InteractiveState) {
     let pos = &state.position;
 
     let footer = Text::from_iter([
@@ -241,14 +241,14 @@ fn readline(mut term: DefaultTerminal, starting_text: String) -> Result<String> 
     }
 }
 
-fn key_to_color(key: &Key, selected: bool) -> Color {
+fn key_to_color(key: &LizardKey, selected: bool) -> Color {
     match (key, selected) {
-        (Key::Char { .. }, true) => Color::White,
-        (Key::Char { .. }, false) => Color::Gray,
-        (Key::Layer { .. }, true) => Color::LightMagenta,
-        (Key::Layer { .. }, false) => Color::Magenta,
-        (Key::Confirm { .. }, true) => Color::LightGreen,
-        (Key::Confirm { .. }, false) => Color::Green,
+        (LizardKey::Char { .. }, true) => Color::White,
+        (LizardKey::Char { .. }, false) => Color::Gray,
+        (LizardKey::Layer { .. }, true) => Color::LightMagenta,
+        (LizardKey::Layer { .. }, false) => Color::Magenta,
+        (LizardKey::Confirm { .. }, true) => Color::LightGreen,
+        (LizardKey::Confirm { .. }, false) => Color::Green,
         (_, true) => Color::LightRed,
         (_, false) => Color::Red,
     }

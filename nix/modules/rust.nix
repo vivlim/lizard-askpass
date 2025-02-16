@@ -7,7 +7,14 @@
     inputs.cargo-doc-live.flakeModule
   ];
   perSystem = { config, self', pkgs, lib, ... }: {
-    rust-project.crates."lizard-askpass".crane.args = {
+    rust-project.crates."lizard_askpass".crane.args = {
+      buildInputs = lib.optionals pkgs.stdenv.isDarwin (
+        with pkgs.darwin.apple_sdk.frameworks; [
+          IOKit
+        ]
+      );
+    };
+    rust-project.crates."lizard_password_agent".crane.args = {
       buildInputs = lib.optionals pkgs.stdenv.isDarwin (
         with pkgs.darwin.apple_sdk.frameworks; [
           IOKit

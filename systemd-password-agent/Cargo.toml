@@ -1,0 +1,17 @@
+[package]
+authors = ["viviridian <dev@vvn.space>"]
+edition = "2021"
+# If you change the name here, you must also do it in flake.nix (and run `cargo generate-lockfile` afterwards)
+name = "lizard_password_agent"
+description = "A simple Rust project using Nix"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+color-eyre = { version = "0.6.3" }
+lizard_askpass_common = { path = "../common" }
+systemd-ask-password-agent = { version = "0.2.1" }
+tokio = { version = "1", features = ["macros", "rt"] }
+futures = "0.3.30"
+ratatui = { version = "0.29.0", features = ["termion"] }
