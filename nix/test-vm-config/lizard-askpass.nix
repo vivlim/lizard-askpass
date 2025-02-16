@@ -1,7 +1,8 @@
 # This is based heavily on nixpkgs' nixos/modules/system/boot/unl0kr.nix at commit 66e4c21
-{ pkgs, config, lib, selfPackages, ... }:
+{ pkgs, config, lib, inputs, ... }:
 let
   cfg = config.boot.initrd.lizard-askpass;
+  selfPackages = config.lizard-flake.flake-inputs.self.packages."${pkgs.stdenv.hostPlatform.system}";
 
   agentServiceUnit = {
     enable = true;
