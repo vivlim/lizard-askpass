@@ -24,7 +24,7 @@
             }
             inputs.disko.nixosModules.disko
           ];
-          specialArgs = { outputs = self'."${system}".packages; };
+          specialArgs = { lizard-askpass = self'.packages.lizard-askpass; };
         };
 
       run-test-vm-script = pkgs.writeShellScriptBin "run-test-vm" ''

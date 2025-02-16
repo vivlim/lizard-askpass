@@ -1,5 +1,5 @@
 # This is based heavily on nixpkgs' nixos/modules/system/boot/unl0kr.nix at commit 66e4c21
-{ pkgs, config, lib, outputs, ... }:
+{ pkgs, config, lib, lizard-askpass, ... }:
 let
   cfg = config.boot.initrd.lizard-askpass;
 in
@@ -43,13 +43,13 @@ in
       storePaths = with pkgs; [
         libinput
         xkeyboard_config
-        "${outputs.packages."${config.system}".default}/bin/lizard-askpass"
+        "${lizard-askpass}/bin/lizard-askpass"
       ];
 
       packages = [
-        outputs.packages."${config.system}".default
+        lizard-askpass
       ];
-      users.root.shell = "${outputs.packages."${config.system}".default}/bin/lizard-askpass";
+      users.root.shell = "${lizard-askpass}/bin/lizard-askpass";
 
       paths.lizard-askpass.wantedBy = [ "local-fs-pre.target" ];
     };
