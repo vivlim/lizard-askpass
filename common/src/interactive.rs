@@ -64,7 +64,6 @@ fn run_osk<B: Backend, I: Read + TermRead>(
     let mut result: Option<RunResult> = None;
     terminal.draw(|frame| render(frame, &keyboard, &state))?;
     for k in input.keys() {
-        //eprintln!("drawing frame");
         let mut delta: Option<Position<i8>> = None; //Position::<i8> {x: 0, y: 0};
         match k? {
             Key::Char('\n') => {
@@ -163,7 +162,7 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<LizardKey>, state: &Interacti
             .block(
                 Block::new()
                     .border_style(Style::default().fg(Color::Gray))
-                    .border_type(BorderType::Rounded)
+                    .border_type(BorderType::Plain)
                     .borders(Borders::ALL),
             )
             .wrap(Wrap { trim: false }),
@@ -185,7 +184,7 @@ fn render(frame: &mut Frame, keyboard: &CharMatrix<LizardKey>, state: &Interacti
             let (selected, border) = if c == pos.x && r == pos.y {
                 (true, BorderType::QuadrantOutside)
             } else {
-                (false, BorderType::Rounded)
+                (false, BorderType::Plain)
             };
 
             let key = &row.items[c];
@@ -217,7 +216,7 @@ fn readline(mut term: DefaultTerminal, starting_text: String) -> Result<String> 
         Block::default()
             .borders(Borders::ALL)
             .border_style(Color::Gray)
-            .border_type(BorderType::Rounded)
+            .border_type(BorderType::Plain)
             .title("Text entry (press Enter to confirm)"),
     );
     let layout = Layout::default().constraints([Constraint::Length(3), Constraint::Min(1)]);
