@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use crate::matrix::{CharMatrix, Layer, Row};
 
-pub fn buildLizardKeyboard() -> CharMatrix<LizardKey> {
+pub fn buildKeyboard() -> CharMatrix<LizardKey> {
     CharMatrix::<LizardKey> {
         layers: vec![
             Layer::<LizardKey> {

@@ -8,7 +8,6 @@ let
     unitConfig = {
       Description = "Lizard (agent)";
       DefaultDependencies = "no";
-      After = "systemd-vconsole-setup.service";
       #Conflicts="emergency.service shutdown.target initrd-switch-root.target";
       Conflicts = "systemd-ask-password-console.path systemd-ask-password-console.service";
 
@@ -21,12 +20,22 @@ let
       #StandardError="inherit";
 
     };
-    wantedBy = [
-      #"cryptsetup-pre.target"
+    wants = [
+      #"systemd-vconsole-setup.service"
+    ];
+    after = [
+      #"plymouth-start.service"
       "systemd-vconsole-setup.service"
+    ];
+    wantedBy = [
+      "cryptsetup-pre.target"
+      "cryptsetup.target"
+      "paths.target"
+      #"systemd-vconsole-setup.service"
       #"multi-user.target"
     ];
     before = [
+      "paths.target"
       "cryptsetup.target"
     ];
   };
@@ -107,13 +116,13 @@ in
         selfPackages.lizard_password_agent
       ];
 
-      paths.lizard_password_agent = agentPathUnit;
+      #paths.lizard_password_agent = agentPathUnit;
       services.lizard_password_agent = agentServiceUnit;
       #paths.systemd-ask-password-console.enable = false;
       #paths.systemd-ask-password-wall.enable = false;
     };
 
-    systemd.paths.lizard_password_agent = agentPathUnit;
+    #systemd.paths.lizard_password_agent = agentPathUnit;
     systemd.services.lizard_password_agent = agentServiceUnit;
     #systemd.paths.systemd-ask-password-console.enable = false;
     #systemd.paths.systemd-ask-password-wall.enable = false;

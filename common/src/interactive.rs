@@ -67,7 +67,7 @@ fn run_osk<B: Backend, I: Read + TermRead>(
         eprintln!("drawing frame");
         terminal.draw(|frame| render(frame, &keyboard, &state))?;
         let mut delta: Option<Position<i8>> = None; //Position::<i8> {x: 0, y: 0};
-        match k.as_ref()? {
+        match k? {
             Key::Char('\n') => {
                 match keyboard.layers[state.layer].rows[state.position.y].items[state.position.x] {
                     keyboard::LizardKey::Char { c } => {
